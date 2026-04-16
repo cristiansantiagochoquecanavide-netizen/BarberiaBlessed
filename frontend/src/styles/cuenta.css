@@ -1,0 +1,245 @@
+/**
+ * Estilos para la página de Mi Cuenta
+ */
+
+.cuenta-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.cuenta-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cuenta-header h1 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.cuenta-header p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.cuenta-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Sección de Perfil */
+.perfil-section {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.perfil-section h2 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.perfil-info {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.avatar-grande {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 40px;
+  flex-shrink: 0;
+}
+
+.info-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-row {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.info-row .label {
+  color: #666;
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.info-row .valor {
+  color: #333;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* Sección Cambiar Contraseña */
+.cambiar-contrasena-section {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.cambiar-contrasena-section h2 {
+  margin: 0 0 24px 0;
+  color: #333;
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cambiar-contrasena-section h2 svg {
+  color: #667eea;
+}
+
+/* Alertas */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.alert-error {
+  background-color: #fee;
+  border: 2px solid #fcc;
+  color: #c33;
+}
+
+.alert-success {
+  background-color: #efe;
+  border: 2px solid #cfc;
+  color: #3c3;
+}
+
+/* Formulario */
+.contrasena-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-group input {
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.info-text {
+  margin: 0;
+  color: #999;
+  font-size: 12px;
+}
+
+.btn-submit {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+.btn-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Info Box */
+.info-box {
+  padding: 16px;
+  background: #f5f7fa;
+  border-left: 4px solid #667eea;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.info-box p {
+  margin: 0;
+  color: #555;
+  line-height: 1.6;
+}
+
+.info-box strong {
+  color: #333;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .perfil-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .info-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .info-row .label {
+    min-width: auto;
+  }
+}

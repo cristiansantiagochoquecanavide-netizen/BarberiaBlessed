@@ -1,0 +1,344 @@
+/**
+ * Estilos para la página de Bitácora
+ */
+
+.bitacora-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.bitacora-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.header-left h1 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.header-left p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Sección de Filtros */
+.filtros-section {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.filtros-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #333;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.filtro-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filtro-input label {
+  font-weight: 600;
+  color: #333;
+  font-size: 13px;
+}
+
+.filtro-input input,
+.filtro-input select {
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.filtro-input input:focus,
+.filtro-input select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-limpiar {
+  padding: 10px 16px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  color: #666;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.btn-limpiar:hover {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+/* Sección de Estadísticas */
+.estadisticas-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #667eea;
+}
+
+.stat-card h4 {
+  margin: 0 0 12px 0;
+  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.stat-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: #555;
+}
+
+.stat-list li {
+  padding: 4px 0;
+}
+
+/* Mensaje de error */
+.error-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background-color: #fee;
+  border: 2px solid #fcc;
+  border-radius: 8px;
+  color: #c33;
+  font-size: 14px;
+}
+
+/* Contenido de bitácora */
+.bitacora-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.loading,
+.empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+
+/* Lista de registros */
+.registros-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.registro-card {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+}
+
+.registro-card:last-child {
+  border-bottom: none;
+}
+
+.registro-card:hover {
+  background: #f9f9f9;
+}
+
+.registro-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.registro-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge-accion {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-accion.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-accion.error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.badge-accion.warning {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.badge-accion.info {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.badge-accion.default {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.tabla-afectada {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.registro-fecha {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+}
+
+/* Cuerpo del registro */
+.registro-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #555;
+  font-size: 13px;
+}
+
+.usuario-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.usuario-label {
+  color: #999;
+  font-size: 12px;
+}
+
+.usuario-username {
+  color: #667eea;
+  font-weight: 500;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.tipos-usuario {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tipo-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #666;
+}
+
+.descripcion {
+  padding: 8px;
+  background: #f5f7fa;
+  border-left: 3px solid #667eea;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.descripcion strong {
+  color: #333;
+}
+
+.registro-roles {
+  font-size: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+  color: #666;
+}
+
+.registro-roles strong {
+  color: #333;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filtros-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .registro-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .registro-fecha {
+    width: 100%;
+    text-align: right;
+  }
+
+  .estadisticas-section {
+    grid-template-columns: 1fr;
+  }
+}
