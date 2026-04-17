@@ -20,6 +20,36 @@ from .models import Usuario, Persona, Rol, UsuarioRol, Bitacora, IntentoFallidoL
 
 # ============= VISTAS AUXILIARES =============
 
+# ============= FUNCIONES AUXILIARES =============
+
+def actualizarync_roles_persona(usuario):
+    """
+    Sincroniza los roles de un usuario con los campos es_barbero y es_cliente de su Persona
+    - Si tiene rol "Barbero" → es_barbero = True
+    - Si tiene rol "Cliente" → es_cliente = True
+    - Si no tiene esos roles → se ponen en False
+    """
+    try:
+        persona = usuario.persona
+        
+        # Obtener los nombres de los roles del usuario
+        roles_usuario = UsuarioRol.objects.filter(usuario=usuario).values_list('rol__nombre', flat=True)
+        roles_usuario = [rol.lower() for rol in roles_usuario]
+        
+        # Actualizar es_barbero
+        persona.es_barbero = 'barbero' in roles_usuario
+        
+        # Actualizar es_cliente
+        persona.es_cliente = 'cliente' in roles_usuario
+        
+        persona.save()
+        
+        return True
+    except Exception as e:
+        print(f"Error sincronizando roles con persona: {str(e)}")
+        return False
+
+
 def home(request):#peticion obtiene datos del navegador y devuelve una respuesta
     return render(request, 'home.html') #devuelve una vista render para renderizar la plantilla home.html osea para devolver un html al navegador
 
@@ -479,6 +509,9 @@ def crear_usuario(request):
                 except Rol.DoesNotExist:
                     pass
             
+            # Sincronizar roles con campos de persona
+            actualizarync_roles_persona(usuario)
+            
             # Registrar en bitácora
             usuario_actual = Usuario.objects.get(id_usuario=request.session.get('usuario_id'))
             registrar_bitacora(
@@ -574,6 +607,9 @@ def detalle_usuario(request, usuario_id):
                         UsuarioRol.objects.create(usuario=usuario, rol=rol)
                     except Rol.DoesNotExist:
                         pass
+                
+                # Sincronizar roles con campos de persona
+                actualizarync_roles_persona(usuario)
             
             registrar_bitacora(
                 usuario=Usuario.objects.get(id_usuario=request.session.get('usuario_id')),
@@ -796,12 +832,26 @@ def detalle_rol(request, rol_id):
 def listar_barberos(request):
     """
     CU5.1 Listar barberos
-    GET: Retorna lista de barberos (Personas con es_barbero=True)
+    GET: Retorna lista de barberos activos (Personas con es_barbero=True y estado_barbero=True)
+    Nota: Solo retorna barberos activos. Los desactivados no se muestran.
     """
     try:
-        barberos = Persona.objects.filter(es_barbero=True)
-        barberos_data = [
-            {
+        barberos = Persona.objects.filter(es_barbero=True, estado_barbero=True)
+        barberos_data = []
+        
+        for b in barberos:
+            # Verificar si el barbero tiene un usuario con rol "Barbero"
+            tiene_rol_barbero = False
+            try:
+                usuario = Usuario.objects.get(persona=b)
+                tiene_rol_barbero = UsuarioRol.objects.filter(
+                    usuario=usuario,
+                    rol__nombre__iexact='Barbero'
+                ).exists()
+            except Usuario.DoesNotExist:
+                pass
+            
+            barberos_data.append({
                 'id_persona': b.id_persona,
                 'nombres': b.nombres,
                 'apellidos': b.apellidos,
@@ -810,10 +860,9 @@ def listar_barberos(request):
                 'especialidad': b.especialidad,
                 'calificacion_promedio': str(b.calificacion_promedio),
                 'estado': b.estado_barbero,
-                'comision': b.comision.id_comision if b.comision else None
-            }
-            for b in barberos
-        ]
+                'comision': b.comision.id_comision if b.comision else None,
+                'tiene_rol_barbero': tiene_rol_barbero
+            })
         
         return JsonResponse({
             'success': True,
@@ -833,6 +882,7 @@ def crear_barbero(request):
     """
     CU5.2 Crear barbero
     POST: Crea una nueva persona como barbero
+    Automáticamente crea un Usuario y asigna el rol "Barbero" en usuario_rol
     """
     if not validar_sesion_admin(request):
         return JsonResponse({
@@ -851,30 +901,67 @@ def crear_barbero(request):
                     'mensaje': f'Campo requerido: {campo}'
                 }, status=400)
         
-        barbero = Persona.objects.create(
-            nombres=data['nombres'],
-            apellidos=data['apellidos'],
-            correo=data.get('correo'),
-            telefono=data.get('telefono', ''),
-            ci=data.get('ci', ''),
-            direccion=data.get('direccion', ''),
-            especialidad=data.get('especialidad', ''),
-            es_barbero=True,
-            estado_barbero=True
-        )
-        
-        registrar_bitacora(
-            usuario=Usuario.objects.get(id_usuario=request.session.get('usuario_id')),
-            tabla_afectada='persona',
-            accion='CREATE',
-            descripcion=f'Nuevo barbero creado: {data["nombres"]} {data["apellidos"]}'
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'mensaje': 'Barbero creado correctamente',
-            'barbero_id': barbero.id_persona
-        }, status=201)
+        with transaction.atomic():
+            # Crear Persona como barbero
+            barbero = Persona.objects.create(
+                nombres=data['nombres'],
+                apellidos=data['apellidos'],
+                correo=data.get('correo'),
+                telefono=data.get('telefono', ''),
+                ci=data.get('ci', ''),
+                direccion=data.get('direccion', ''),
+                especialidad=data.get('especialidad', ''),
+                es_barbero=True,
+                estado_barbero=True
+            )
+            
+            # Crear Usuario automáticamente para el barbero
+            # Usar nombres y apellidos para generar username único
+            username_base = f"{barbero.nombres.lower()}.{barbero.apellidos.lower()}".replace(' ', '')
+            username = username_base
+            contador = 1
+            
+            # Asegurar que el username sea único
+            while Usuario.objects.filter(username=username).exists():
+                username = f"{username_base}{contador}"
+                contador += 1
+            
+            # Generar contraseña temporal segura
+            contrasena_temporal = generar_contrasena_temporal()
+            
+            # Crear usuario
+            usuario = Usuario.objects.create(
+                persona=barbero,
+                username=username,
+                password=make_password(contrasena_temporal),
+                estado=True
+            )
+            
+            # Asignar rol "Barbero" automáticamente
+            try:
+                rol_barbero = Rol.objects.get(nombre__iexact='Barbero')
+                UsuarioRol.objects.create(usuario=usuario, rol=rol_barbero)
+                
+                # Sincronizar roles con campos de persona (esto asegura es_barbero=True)
+                actualizarync_roles_persona(usuario)
+            except Rol.DoesNotExist:
+                print("Advertencia: El rol 'Barbero' no existe en la base de datos")
+            
+            registrar_bitacora(
+                usuario=Usuario.objects.get(id_usuario=request.session.get('usuario_id')),
+                tabla_afectada='persona',
+                accion='CREATE',
+                descripcion=f'Nuevo barbero creado: {data["nombres"]} {data["apellidos"]} (Usuario: {username})'
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'mensaje': 'Barbero creado correctamente',
+                'barbero_id': barbero.id_persona,
+                'usuario_id': usuario.id_usuario,
+                'username': username,
+                'nota': f'Usuario creado automáticamente con username: {username}'
+            }, status=201)
         
     except json.JSONDecodeError:
         return JsonResponse({
@@ -940,6 +1027,21 @@ def detalle_barbero(request, barbero_id):
             
             barbero.save()
             
+            # Sincronizar rol "Barbero" si tiene usuario asociado
+            try:
+                usuario = Usuario.objects.get(persona=barbero)
+                rol_barbero = Rol.objects.get(nombre__iexact='Barbero')
+                
+                # Si el barbero está activo, asignar el rol
+                if barbero.estado_barbero:
+                    if not UsuarioRol.objects.filter(usuario=usuario, rol=rol_barbero).exists():
+                        UsuarioRol.objects.create(usuario=usuario, rol=rol_barbero)
+                else:
+                    # Si el barbero está inactivo, remover el rol
+                    UsuarioRol.objects.filter(usuario=usuario, rol=rol_barbero).delete()
+            except (Usuario.DoesNotExist, Rol.DoesNotExist):
+                pass
+            
             registrar_bitacora(
                 usuario=Usuario.objects.get(id_usuario=request.session.get('usuario_id')),
                 tabla_afectada='persona',
@@ -953,20 +1055,49 @@ def detalle_barbero(request, barbero_id):
             })
         
         elif request.method == 'DELETE':
-            barbero.estado_barbero = False
-            barbero.save()
+            # Desactivar el barbero (soft delete)
+            if barbero.estado_barbero == False:
+                return JsonResponse({
+                    'success': False,
+                    'mensaje': 'Este barbero ya está desactivado'
+                }, status=400)
             
-            registrar_bitacora(
-                usuario=Usuario.objects.get(id_usuario=request.session.get('usuario_id')),
-                tabla_afectada='persona',
-                accion='DELETE',
-                descripcion=f'Barbero {barbero.nombres} {barbero.apellidos} desactivado'
-            )
-            
-            return JsonResponse({
-                'success': True,
-                'mensaje': 'Barbero desactivado correctamente'
-            })
+            try:
+                with transaction.atomic():
+                    barbero.estado_barbero = False
+                    barbero.save()
+                    
+                    # Remover el rol "Barbero" si tiene usuario asociado
+                    try:
+                        usuario = Usuario.objects.get(persona=barbero)
+                        rol_barbero = Rol.objects.get(nombre__iexact='Barbero')
+                        UsuarioRol.objects.filter(usuario=usuario, rol=rol_barbero).delete()
+                    except (Usuario.DoesNotExist, Rol.DoesNotExist):
+                        pass
+                    
+                    # Registrar en bitácora
+                    usuario_actual_id = request.session.get('usuario_id')
+                    if usuario_actual_id:
+                        try:
+                            usuario_actual = Usuario.objects.get(id_usuario=usuario_actual_id)
+                            registrar_bitacora(
+                                usuario=usuario_actual,
+                                tabla_afectada='persona',
+                                accion='DELETE',
+                                descripcion=f'Barbero {barbero.nombres} {barbero.apellidos} desactivado'
+                            )
+                        except Usuario.DoesNotExist:
+                            pass
+                
+                return JsonResponse({
+                    'success': True,
+                    'mensaje': 'Barbero desactivado correctamente'
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'mensaje': f'Error al desactivar barbero: {str(e)}'
+                }, status=500)
             
     except Persona.DoesNotExist:
         return JsonResponse({

@@ -24,6 +24,7 @@ export const BarberosPage = () => {
   const [barberos, setBarberos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [exito, setExito] = useState('');
   const [modalAbierto, setModalAbierto] = useState(false);
   const [barberaEditando, setBarberaEditando] = useState(null);
 
@@ -88,6 +89,7 @@ export const BarberosPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setExito('');
 
     if (!form.nombres.trim() || !form.apellidos.trim()) {
       setError('Los nombres y apellidos son requeridos');
@@ -104,6 +106,16 @@ export const BarberosPage = () => {
     if (resultado.success) {
       handleCerrarModal();
       cargarBarberos();
+      
+      if (!barberaEditando && resultado.usuario_id) {
+        setExito(
+          `✅ Barbero creado correctamente\n` +
+          `📋 Usuario: ${resultado.username}\n` +
+          `🔐 Contraseña temporal generada automáticamente\n` +
+          `👁️ El usuario aparecerá en "Gestionar Usuarios"`
+        );
+        setTimeout(() => setExito(''), 5000);
+      }
     } else {
       setError(resultado.mensaje || 'Error al guardar barbero');
     }
@@ -111,11 +123,14 @@ export const BarberosPage = () => {
 
   const handleEliminar = async (barberoId) => {
     if (window.confirm('¿Desactivar este barbero?')) {
+      setError('');
       const resultado = await eliminarBarbero(barberoId);
       if (resultado.success) {
+        setExito('✅ Barbero desactivado correctamente');
+        setTimeout(() => setExito(''), 3000);
         cargarBarberos();
       } else {
-        setError(resultado.mensaje || 'Error al eliminar barbero');
+        setError('❌ ' + (resultado.mensaje || 'Error al eliminar barbero'));
       }
     }
   };
@@ -137,6 +152,12 @@ export const BarberosPage = () => {
         <div className="error-box">
           <AlertCircle size={20} />
           <span>{error}</span>
+        </div>
+      )}
+
+      {exito && (
+        <div className="success-box">
+          <span>{exito}</span>
         </div>
       )}
 

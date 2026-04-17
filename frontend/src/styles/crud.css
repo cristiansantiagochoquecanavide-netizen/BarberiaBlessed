@@ -108,6 +108,21 @@
   font-size: 14px;
 }
 
+/* Mensaje de éxito */
+.success-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background-color: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 8px;
+  color: #2e7d32;
+  font-size: 14px;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
 /* Contenido CRUD */
 .crud-content {
   background: white;
