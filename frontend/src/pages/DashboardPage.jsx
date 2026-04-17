@@ -26,7 +26,8 @@ import {
   ActivitySquare,
   Settings,
   LogOut,
-  X
+  X,
+  ChevronDown
 } from 'lucide-react';
 import '../styles/dashboard.css';
 
@@ -34,6 +35,7 @@ export const DashboardPage = () => {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [grupoAbierto, setGrupoAbierto] = useState(true); // Grupo "Seguridad y Personal" abierto por defecto
 
   const handleLogout = async () => {
     const resultado = await logoutUsuario();
@@ -43,35 +45,46 @@ export const DashboardPage = () => {
     }
   };
 
-  const menuItems = [
+  // Estructura de menú con grupos
+  const grupos = [
     {
-      id: 'usuarios',
-      label: 'Gestionar Usuarios',
-      icon: Users,
-      ruta: '/usuarios',
-      descripcion: 'Crear, editar y eliminar usuarios del sistema'
-    },
-    {
-      id: 'roles',
-      label: 'Gestionar Roles',
-      icon: Shield,
-      ruta: '/roles',
-      descripcion: 'Administrar roles y permisos'
-    },
-    {
-      id: 'barberos',
-      label: 'Gestionar Barberos',
-      icon: Scissors,
-      ruta: '/barberos',
-      descripcion: 'Gestionar información de los barberos'
-    },
-    {
-      id: 'bitacora',
-      label: 'Consultar Bitácora',
-      icon: ActivitySquare,
-      ruta: '/bitacora',
-      descripcion: 'Ver auditoría del sistema'
-    },
+      id: 'seguridad',
+      nombre: 'Seguridad y Personal',
+      items: [
+        {
+          id: 'usuarios',
+          label: 'Gestionar Usuarios',
+          icon: Users,
+          ruta: '/usuarios',
+          descripcion: 'Crear, editar y eliminar usuarios del sistema'
+        },
+        {
+          id: 'roles',
+          label: 'Gestionar Roles',
+          icon: Shield,
+          ruta: '/roles',
+          descripcion: 'Administrar roles y permisos'
+        },
+        {
+          id: 'barberos',
+          label: 'Gestionar Barberos',
+          icon: Scissors,
+          ruta: '/barberos',
+          descripcion: 'Gestionar información de los barberos'
+        },
+        {
+          id: 'bitacora',
+          label: 'Consultar Bitácora',
+          icon: ActivitySquare,
+          ruta: '/bitacora',
+          descripcion: 'Ver auditoría del sistema'
+        }
+      ]
+    }
+  ];
+
+  // Items fuera de grupo
+  const itemsAdicionales = [
     {
       id: 'cuenta',
       label: 'Mi Cuenta',
@@ -79,6 +92,12 @@ export const DashboardPage = () => {
       ruta: '/cuenta',
       descripcion: 'Cambiar contraseña y perfil'
     }
+  ];
+
+  // Obtener todos los items para el acceso rápido
+  const todosLosItems = [
+    ...grupos.flatMap(g => g.items),
+    ...itemsAdicionales
   ];
 
   return (
@@ -109,7 +128,43 @@ export const DashboardPage = () => {
 
         {/* Menú */}
         <nav className="sidebar-menu">
-          {menuItems.map((item) => (
+          {/* Grupo: Seguridad y Personal */}
+          <div className="menu-group">
+            <button
+              className="menu-group-header"
+              onClick={() => setGrupoAbierto(!grupoAbierto)}
+            >
+              <span>Seguridad y Personal</span>
+              <ChevronDown
+                size={18}
+                style={{
+                  transform: grupoAbierto ? 'rotate(0deg)' : 'rotate(-90deg)',
+                  transition: 'transform 0.3s'
+                }}
+              />
+            </button>
+
+            {grupoAbierto && (
+              <div className="menu-group-items">
+                {grupos[0].items.map((item) => (
+                  <button
+                    key={item.id}
+                    className="menu-item menu-item-submenu"
+                    onClick={() => {
+                      navigate(item.ruta);
+                      setMenuAbierto(false);
+                    }}
+                  >
+                    <item.icon size={18} />
+                    <span className="menu-label">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Items adicionales */}
+          {itemsAdicionales.map((item) => (
             <button
               key={item.id}
               className="menu-item"
@@ -168,7 +223,7 @@ export const DashboardPage = () => {
           <section className="quick-access">
             <h2>Acceso Rápido</h2>
             <div className="access-grid">
-              {menuItems.map((item) => (
+              {todosLosItems.map((item) => (
                 <div
                   key={item.id}
                   className="access-card"
@@ -184,21 +239,6 @@ export const DashboardPage = () => {
             </div>
           </section>
 
-          {/* Estadísticas/Info */}
-          <section className="dashboard-info">
-            <div className="info-card">
-              <h3>📋 Funcionalidades Disponibles</h3>
-              <ul>
-                <li><strong>CU1:</strong> Iniciar sesión ✅</li>
-                <li><strong>CU2:</strong> Cerrar sesión ✅</li>
-                <li><strong>CU3:</strong> Gestionar usuarios - Crear, editar y eliminar</li>
-                <li><strong>CU4:</strong> Gestionar roles - Crear y administrar</li>
-                <li><strong>CU5:</strong> Gestionar barberos - Control del personal</li>
-                <li><strong>CU6:</strong> Consultar bitácora - Auditoría completa</li>
-                <li><strong>CU7:</strong> Cambiar contraseña - Seguridad de cuenta</li>
-              </ul>
-            </div>
-          </section>
         </div>
       </main>
 

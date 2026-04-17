@@ -4,7 +4,8 @@
  * Router de la aplicación con todas las rutas y navegación.
  * 
  * Estructura:
- * - /login: Página de autenticación
+ * - /login: Página de autenticación (CU1)
+ * - /recuperar-contrasena: Recuperación de contraseña (CU8)
  * - /dashboard: Dashboard principal (requiere autenticación)
  * - /usuarios: Gestión de usuarios (CU3)
  * - /roles: Gestión de roles (CU4)
@@ -19,6 +20,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Páginas
 import LoginPage from './pages/LoginPage';
+import RecuperarContraseniaPage from './pages/RecuperarContraseniaPage';
 import DashboardPage from './pages/DashboardPage';
 import UsuariosPage from './pages/UsuariosPage';
 import RolesPage from './pages/RolesPage';
@@ -34,8 +36,9 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Login */}
+          {/* Autenticación */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/recuperar-contrasena" element={<RecuperarContraseniaPage />} />
 
           {/* Dashboard y páginas protegidas */}
           <Route path="/dashboard" element={<ProtectedRoute element={<DashboardPage />} />} />

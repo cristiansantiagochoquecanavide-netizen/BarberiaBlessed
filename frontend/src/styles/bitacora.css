@@ -200,6 +200,24 @@
   flex-wrap: wrap;
 }
 
+.registro-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.id-bitacora {
+  font-family: 'Monaco', 'Courier New', monospace;
+  background: #f0e6ff;
+  color: #764ba2;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
 .registro-action {
   display: flex;
   align-items: center;

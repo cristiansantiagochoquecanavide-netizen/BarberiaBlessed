@@ -32,4 +32,7 @@ urlpatterns = [
     
     # CU7. Cambiar contraseña
     path('cambiar-contrasena/', views.cambiar_contrasena, name='cambiar_contrasena'),
+    
+    # CU8. Recuperar contraseña
+    path('recuperar-contrasena/', views.recuperar_contrasena, name='recuperar_contrasena'),
 ]

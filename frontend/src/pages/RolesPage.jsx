@@ -122,6 +122,7 @@ export const RolesPage = () => {
             <table className="crud-table">
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Nombre del Rol</th>
                   <th>Usuarios Asignados</th>
                   <th>Acciones</th>
@@ -130,6 +131,7 @@ export const RolesPage = () => {
               <tbody>
                 {roles.map((rol) => (
                   <tr key={rol.id_rol}>
+                    <td className="id-cell">{rol.id_rol}</td>
                     <td className="font-mono">{rol.nombre}</td>
                     <td>{rol.usuarios_asignados}</td>
                     <td className="actions">

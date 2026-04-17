@@ -61,12 +61,19 @@ export const loginUsuario = async (username, password) => {
       message: error.message
     });
     
-    // Mensaje de error más específico
+    // Si el backend devolvió una respuesta estructurada (error de validación, bloqueo, etc)
+    if (error.response?.data) {
+      // Devolver la respuesta completa del backend con todos sus campos
+      return {
+        success: false,
+        ...error.response.data  // Incluye: mensaje, bloqueado, tiempo_restante, etc.
+      };
+    }
+    
+    // Mensaje de error más específico para errores de conexión/servidor
     let mensaje = 'Error al iniciar sesión';
     if (error.response?.status === 403) {
       mensaje = 'Error CORS: El servidor no acepta peticiones desde este origen. Verifica la configuración Django.';
-    } else if (error.response?.status === 401 || error.response?.status === 400) {
-      mensaje = error.response?.data?.mensaje || 'Usuario o contraseña incorrectos';
     } else if (!error.response) {
       mensaje = 'Error de conexión: No puedes conectar con el servidor. ¿Está Django corriendo en http://localhost:8000?';
     }
@@ -338,20 +345,44 @@ export const consultarBitacora = async (filtros = {}) => {
 
 /**
  * CU7. Cambiar contraseña
+ * POST /api/seguridad/cambiar-contrasena/
+ * 
+ * Permite que un usuario autenticado cambie su contraseña
+ * con validaciones de contraseña robusta
  */
-
 export const cambiarContrasena = async (contrasenaActual, contrasenaNueva, confirmacion) => {
   try {
     const response = await apiClient.post('/cambiar-contrasena/', {
-      'contraseña_actual': contrasenaActual,
-      'contraseña_nueva': contrasenaNueva,
-      'contraseña_nueva_confirmacion': confirmacion
+      contrasena_actual: contrasenaActual,
+      contrasena_nueva: contrasenaNueva,
+      contrasena_confirmacion: confirmacion
     });
     return response.data;
   } catch (error) {
     return {
       success: false,
       mensaje: error.response?.data?.mensaje || 'Error al cambiar contraseña'
+    };
+  }
+};
+
+/**
+ * CU8. Recuperar contraseña
+ * POST /api/seguridad/recuperar-contrasena/
+ * 
+ * Genera una contraseña temporal para usuarios que olvidaron su contraseña
+ * La contraseña temporal cumple con requisitos de seguridad robustos
+ */
+export const recuperarContrasena = async (username) => {
+  try {
+    const response = await apiClient.post('/recuperar-contrasena/', {
+      username: username
+    });
+    return response.data;
+  } catch (error) {
+    return {
+      success: false,
+      mensaje: error.response?.data?.mensaje || 'Error al recuperar contraseña'
     };
   }
 };

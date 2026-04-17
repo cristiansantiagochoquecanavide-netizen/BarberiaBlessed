@@ -217,6 +217,7 @@ export const BitacoraPage = () => {
             {registros.map((registro) => (
               <div key={registro.id_bitacora} className="registro-card">
                 <div className="registro-header">
+                  <div className="registro-id">ID: <span className="id-bitacora">{registro.id_bitacora}</span></div>
                   <div className="registro-action">
                     <span className={`badge-accion ${getColorAccion(registro.accion.tipo)}`}>
                       {registro.accion.tipo}

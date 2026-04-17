@@ -119,3 +119,35 @@ class Bitacora(models.Model):
 
     def __str__(self):
         return f"{self.accion} - {self.tabla_afectada}"
+
+
+class IntentoFallidoLogin(models.Model):
+    """
+    Modelo para rastrear intentos fallidos de login
+    Permite bloquear una cuenta después de 3 intentos fallidos durante 5 minutos
+    """
+    id_intento = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(
+        'seguridad_y_personal.Usuario',
+        on_delete=models.CASCADE,
+        db_column='id_usuario',
+        related_name='intentos_fallidos'
+    )
+    fecha_intento = models.DateTimeField(default=timezone.now)  # Fecha y hora del intento fallido
+    bloqueado_hasta = models.DateTimeField(null=True, blank=True)  # Hasta cuándo estará bloqueado
+    
+    class Meta:
+        db_table = 'intento_fallido_login'
+    
+    def __str__(self):
+        return f"Intento fallido - {self.usuario.username} - {self.fecha_intento}"
+    
+    @property
+    def esta_bloqueado(self):
+        """
+        Verifica si el usuario aún está bloqueado
+        Retorna True si está bloqueado, False si ya pasó el tiempo
+        """
+        if self.bloqueado_hasta is None:
+            return False
+        return timezone.now() < self.bloqueado_hasta

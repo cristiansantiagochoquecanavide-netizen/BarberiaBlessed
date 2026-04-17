@@ -9,9 +9,13 @@ from django.db import transaction
 from django.db.models import Count
 from django.views import View
 from django.utils.decorators import method_decorator
+from datetime import timedelta
 import json
+import re
+import secrets
+import string
 
-from .models import Usuario, Persona, Rol, UsuarioRol, Bitacora
+from .models import Usuario, Persona, Rol, UsuarioRol, Bitacora, IntentoFallidoLogin
 
 
 # ============= VISTAS AUXILIARES =============
@@ -41,15 +45,197 @@ def registrar_bitacora(usuario, tabla_afectada, accion, descripcion=""):
         print(f"Error registrando en bitácora: {str(e)}")
 
 
+# ============= FUNCIONES DE VALIDACIÓN =============
+
+def validar_contrasena_robusta(contrasena):
+    """
+    Valida que la contraseña cumpla con requisitos de seguridad:
+    - Mínimo 8 caracteres
+    - Al menos 1 mayúscula (A-Z)
+    - Al menos 1 minúscula (a-z)
+    - Al menos 1 número (0-9)
+    - Al menos 1 carácter especial (@, #, $, %, !, &, *, etc.)
+    
+    Retorna: (es_valida: bool, mensaje: str)
+    """
+    
+    # Validación 1: Longitud mínima
+    if len(contrasena) < 8:
+        return False, "La contraseña debe tener mínimo 8 caracteres"
+    
+    # Validación 2: Mayúsculas
+    if not re.search(r'[A-Z]', contrasena):
+        return False, "La contraseña debe contener al menos 1 mayúscula (A-Z)"
+    
+    # Validación 3: Minúsculas
+    if not re.search(r'[a-z]', contrasena):
+        return False, "La contraseña debe contener al menos 1 minúscula (a-z)"
+    
+    # Validación 4: Números
+    if not re.search(r'[0-9]', contrasena):
+        return False, "La contraseña debe contener al menos 1 número (0-9)"
+    
+    # Validación 5: Caracteres especiales (@, #, $, %, !, &, *, etc.)
+    if not re.search(r'[@#$%!&*\-_=+\[\]{};:\'",.<>?/\\`~^|]', contrasena):
+        return False, "La contraseña debe contener al menos 1 carácter especial (@, #, $, %, !, &, *, -, _, =, +, etc.)"
+    
+    # Si pasó todas las validaciones
+    return True, "Contraseña válida"
+
+
+def generar_contrasena_temporal():
+    """
+    Genera una contraseña temporal segura de 12 caracteres que cumple con
+    los requisitos de seguridad (mayúsculas, minúsculas, números, caracteres especiales)
+    """
+    
+    caracteres_mayusculas = string.ascii_uppercase  # A-Z
+    caracteres_minusculas = string.ascii_lowercase  # a-z
+    caracteres_numeros = string.digits              # 0-9
+    caracteres_especiales = '@#$%!&*'               # Caracteres especiales permitidos
+    
+    # Seleccionar al menos 1 de cada tipo requerido
+    contrasena = [
+        secrets.choice(caracteres_mayusculas),
+        secrets.choice(caracteres_minusculas),
+        secrets.choice(caracteres_numeros),
+        secrets.choice(caracteres_especiales)
+    ]
+    
+    # Completar el resto (8 caracteres adicionales) con caracteres mezclados
+    todos_caracteres = (caracteres_mayusculas + caracteres_minusculas + 
+                       caracteres_numeros + caracteres_especiales)
+    
+    for _ in range(8):
+        contrasena.append(secrets.choice(todos_caracteres))
+    
+    # Mezclar aleatoriamente la contraseña
+    import random
+    random.shuffle(contrasena)
+    
+    return ''.join(contrasena)
+
+
+# ============= FUNCIONES DE BLOQUEO POR INTENTOS FALLIDOS =============
+
+def verificar_usuario_bloqueado(usuario):
+    """
+    Verifica si un usuario está bloqueado por intentos fallidos de login
+    
+    Retorna: (esta_bloqueado: bool, tiempo_restante: int, mensaje: str)
+    - esta_bloqueado: True si el usuario está bloqueado
+    - tiempo_restante: Segundos que faltan para desbloqueo
+    - mensaje: Mensaje descriptivo para mostrar al usuario
+    """
+    try:
+        # Intentar obtener el registro de bloqueo más reciente
+        intento_bloqueo = IntentoFallidoLogin.objects.filter(
+            usuario=usuario,
+            bloqueado_hasta__isnull=False
+        ).latest('fecha_intento')
+        
+        ahora = timezone.now()
+        
+        # Si existe y aún está dentro del periodo de bloqueo
+        if intento_bloqueo.bloqueado_hasta and ahora < intento_bloqueo.bloqueado_hasta:
+            # Calcular tiempo restante en segundos
+            tiempo_restante = int((intento_bloqueo.bloqueado_hasta - ahora).total_seconds())
+            minutos = tiempo_restante // 60
+            segundos = tiempo_restante % 60
+            
+            mensaje = f"Tu cuenta fue bloqueada por seguridad después de 3 intentos fallidos. Intenta de nuevo en {minutos}:{segundos:02d} minutos."
+            
+            return True, tiempo_restante, mensaje
+        else:
+            # El bloqueo ya expiró, limpiar registros antiguos
+            IntentoFallidoLogin.objects.filter(
+                usuario=usuario,
+                bloqueado_hasta__lt=ahora
+            ).delete()
+            
+            return False, 0, ""
+    
+    except IntentoFallidoLogin.DoesNotExist:
+        # No hay registro de bloqueo
+        return False, 0, ""
+
+
+def registrar_intento_fallido(usuario):
+    """
+    Registra un intento fallido de login y bloquea la cuenta si es necesario
+    
+    - Enésimo intento fallido: registrar solo
+    - 3er intento fallido: bloquear durante 5 minutos
+    
+    Retorna: (debe_bloquearse: bool, intentos_realizados: int, mensaje: str)
+    """
+    try:
+        ahora = timezone.now()
+        hace_5_minutos = ahora - timedelta(minutes=5)
+        
+        # Contar intentos fallidos en los últimos 5 minutos
+        intentos_recientes = IntentoFallidoLogin.objects.filter(
+            usuario=usuario,
+            fecha_intento__gte=hace_5_minutos,
+            bloqueado_hasta__isnull=True  # Solo intentos sin bloqueo previo
+        ).count()
+        
+        # Registrar el nuevo intento fallido
+        nuevo_intento = IntentoFallidoLogin.objects.create(
+            usuario=usuario,
+            fecha_intento=ahora
+        )
+        
+        # Sumar 1 al intento actual
+        intentos_totales = intentos_recientes + 1
+        
+        # Si llegó a 3 intentos, bloquear la cuenta
+        if intentos_totales >= 3:
+            tiempo_bloqueo = ahora + timedelta(minutes=5)  # Bloquear por 5 minutos
+            nuevo_intento.bloqueado_hasta = tiempo_bloqueo
+            nuevo_intento.save()
+            
+            mensaje = "Tu cuenta ha sido bloqueada por seguridad. Intenta de nuevo en 5 minutos."
+            return True, intentos_totales, mensaje
+        
+        # Mensaje informando cuántos intentos quedan
+        intentos_restantes = 3 - intentos_totales
+        if intentos_restantes == 1:
+            mensaje = f"❌ Contraseña incorrecta. Te queda {intentos_restantes} intento antes de bloqueo."
+        else:
+            mensaje = f"❌ Contraseña incorrecta. Te quedan {intentos_restantes} intentos antes de bloqueo."
+        
+        return False, intentos_totales, mensaje
+    
+    except Exception as e:
+        print(f"Error registrando intento fallido: {str(e)}")
+        return False, 0, ""
+
+
+def limpiar_intentos_exitosos(usuario):
+    """
+    Limpia los registros de intentos fallidos cuando el login es exitoso
+    """
+    try:
+        IntentoFallidoLogin.objects.filter(usuario=usuario).delete()
+    except Exception as e:
+        print(f"Error limpiando intentos: {str(e)}")
+
+
 # ============= CU1. INICIAR SESIÓN =============
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def iniciar_sesion(request):
     """
-    CU1. Iniciar sesión
+    CU1. Iniciar sesión con sistema de bloqueo por intentos fallidos
     GET: Retorna la página de login
     POST: Autentica usuario y crea sesión
+    
+    Sistema de seguridad:
+    - Máximo 3 intentos fallidos en 5 minutos
+    - Después de 3 intentos fallidos: bloqueo por 5 minutos
+    - Después de 5 minutos: se permite reintentar
     """
     if request.method == 'GET':
         return render(request, 'usuario/login.html')
@@ -69,24 +255,44 @@ def iniciar_sesion(request):
             # Buscar usuario
             usuario = Usuario.objects.select_related('persona').get(username=username)
             
+            # PASO 1: Verificar si el usuario está bloqueado por intentos fallidos
+            esta_bloqueado, tiempo_restante, mensaje_bloqueo = verificar_usuario_bloqueado(usuario)
+            if esta_bloqueado:
+                return JsonResponse({
+                    'success': False,
+                    'mensaje': mensaje_bloqueo,
+                    'bloqueado': True,
+                    'tiempo_restante': tiempo_restante
+                }, status=429)  # 429 = Too Many Requests
+            
             if not usuario.estado:
                 return JsonResponse({
                     'success': False,
                     'mensaje': 'Usuario inactivo. Contacte al administrador.'
                 }, status=403)
             
-            # Verificar contraseña
+            # PASO 2: Verificar contraseña
             if not check_password(password, usuario.password):
+                # La contraseña es incorrecta
+                debe_bloquearse, intentos, mensaje_intento = registrar_intento_fallido(usuario)
+                
                 registrar_bitacora(
                     usuario=usuario,
                     tabla_afectada='usuario',
-                    accion='INTENTO_FALLIDO',
-                    descripcion=f'Intento fallido de login'
+                    accion='INTENTO_FALLIDO_LOGIN',
+                    descripcion=f'Intento fallido de login (intento {intentos})'
                 )
+                
                 return JsonResponse({
                     'success': False,
-                    'mensaje': 'Usuario o contraseña incorrectos'
+                    'mensaje': mensaje_intento,
+                    'bloqueado': debe_bloquearse,
+                    'intentos_realizados': intentos
                 }, status=401)
+            
+            # PASO 3: Contraseña correcta - Login exitoso
+            # Limpiar intentos fallidos
+            limpiar_intentos_exitosos(usuario)
             
             # Crear sesión
             request.session['usuario_id'] = usuario.id_usuario
@@ -96,8 +302,8 @@ def iniciar_sesion(request):
             registrar_bitacora(
                 usuario=usuario,
                 tabla_afectada='usuario',
-                accion='LOGIN',
-                descripcion=f'Usuario {username} inició sesión'
+                accion='LOGIN_EXITOSO',
+                descripcion=f'Usuario {username} inició sesión correctamente'
             )
             
             return JsonResponse({
@@ -185,7 +391,7 @@ def listar_usuarios(request):
         }, status=403)
     
     try:
-        usuarios = Usuario.objects.select_related('persona').all()
+        usuarios = Usuario.objects.select_related('persona').prefetch_related('usuario_roles__rol').all()
         usuarios_data = [
             {
                 'id_usuario': u.id_usuario,
@@ -193,7 +399,9 @@ def listar_usuarios(request):
                 'nombre': f"{u.persona.nombres} {u.persona.apellidos}",
                 'correo': u.persona.correo,
                 'estado': u.estado,
-                'id_persona': u.persona.id_persona
+                'id_persona': u.persona.id_persona,
+                'fecha_nacimiento': u.persona.fecha_nacimiento.isoformat() if u.persona.fecha_nacimiento else '',
+                'roles': [rol.rol.nombre for rol in u.usuario_roles.all()]
             }
             for u in usuarios
         ]
@@ -250,7 +458,8 @@ def crear_usuario(request):
                 correo=data.get('correo'),
                 telefono=data.get('telefono', ''),
                 ci=data.get('ci', ''),
-                direccion=data.get('direccion', '')
+                direccion=data.get('direccion', ''),
+                fecha_nacimiento=data.get('fecha_nacimiento') or None
             )
             
             # Crear usuario
@@ -316,7 +525,9 @@ def detalle_usuario(request, usuario_id):
         usuario = Usuario.objects.select_related('persona').get(id_usuario=usuario_id)
         
         if request.method == 'GET':
-            roles = UsuarioRol.objects.filter(usuario=usuario).values_list('rol__nombre', flat=True)
+            roles_data = UsuarioRol.objects.filter(usuario=usuario).select_related('rol').values_list('rol__id_rol', 'rol__nombre')
+            roles_ids = [rol[0] for rol in roles_data]
+            fecha_nacimiento = usuario.persona.fecha_nacimiento.isoformat() if usuario.persona.fecha_nacimiento else ''
             return JsonResponse({
                 'success': True,
                 'usuario': {
@@ -328,8 +539,9 @@ def detalle_usuario(request, usuario_id):
                     'telefono': usuario.persona.telefono,
                     'ci': usuario.persona.ci,
                     'direccion': usuario.persona.direccion,
+                    'fecha_nacimiento': fecha_nacimiento,
                     'estado': usuario.estado,
-                    'roles': list(roles)
+                    'roles': roles_ids
                 }
             })
         
@@ -344,6 +556,8 @@ def detalle_usuario(request, usuario_id):
             persona.telefono = data.get('telefono', persona.telefono)
             persona.ci = data.get('ci', persona.ci)
             persona.direccion = data.get('direccion', persona.direccion)
+            if data.get('fecha_nacimiento'):
+                persona.fecha_nacimiento = data.get('fecha_nacimiento')
             persona.save()
             
             # Actualizar estado si aplica
@@ -924,7 +1138,7 @@ def consultar_bitacora(request):
         }, status=500)
 
 
-# ============= CAMBIAR CONTRASEÑA =============
+# ============= CU7. CAMBIAR CONTRASEÑA =============
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -932,72 +1146,190 @@ def cambiar_contrasena(request):
     """
     CU7. Cambiar contraseña
     POST: Cambia la contraseña del usuario autenticado
-    Requiere: contraseña_actual, contraseña_nueva, contraseña_nueva_confirmacion
+    
+    Requiere JSON:
+    - contrasena_actual: Contraseña actual del usuario
+    - contrasena_nueva: Nueva contraseña (debe cumplir validaciones)
+    - contrasena_confirmacion: Confirmación de la nueva contraseña
+    
+    Validaciones:
+    - Mínimo 8 caracteres
+    - 1 mayúscula, 1 minúscula, 1 número, 1 carácter especial
     """
     try:
+        # Verificar que el usuario está autenticado
         if 'usuario_id' not in request.session:
             return JsonResponse({
                 'success': False,
-                'mensaje': 'No autenticado'
+                'mensaje': 'No autenticado. Inicia sesión primero'
             }, status=401)
         
+        # Parsear datos JSON
         data = json.loads(request.body)
         
+        # Obtener datos del formulario
         usuario_id = request.session.get('usuario_id')
-        contrasena_actual = data.get('contraseña_actual', '').strip()
-        contrasena_nueva = data.get('contraseña_nueva', '').strip()
-        contrasena_confirmacion = data.get('contraseña_nueva_confirmacion', '').strip()
+        contrasena_actual = data.get('contrasena_actual', '').strip()
+        contrasena_nueva = data.get('contrasena_nueva', '').strip()
+        contrasena_confirmacion = data.get('contrasena_confirmacion', '').strip()
         
-        # Validar campos
+        # Validación 1: Campos requeridos
         if not all([contrasena_actual, contrasena_nueva, contrasena_confirmacion]):
             return JsonResponse({
                 'success': False,
                 'mensaje': 'Todos los campos son requeridos'
             }, status=400)
         
+        # Validación 2: Las nuevas contraseñas coinciden
         if contrasena_nueva != contrasena_confirmacion:
             return JsonResponse({
                 'success': False,
-                'mensaje': 'Las contraseñas nuevas no coinciden'
+                'mensaje': 'Las nuevas contraseñas no coinciden'
             }, status=400)
         
-        if len(contrasena_nueva) < 6:
+        # Validación 3: Contraseña nueva no es igual a la actual
+        usuario = Usuario.objects.get(id_usuario=usuario_id)
+        if check_password(contrasena_nueva, usuario.password):
             return JsonResponse({
                 'success': False,
-                'mensaje': 'La contraseña debe tener al menos 6 caracteres'
+                'mensaje': 'La nueva contraseña debe ser diferente a la actual'
             }, status=400)
         
-        # Obtener usuario
-        usuario = Usuario.objects.get(id_usuario=usuario_id)
+        # Validación 4: Validar requisitos de seguridad
+        es_valida, mensaje_validacion = validar_contrasena_robusta(contrasena_nueva)
+        if not es_valida:
+            return JsonResponse({
+                'success': False,
+                'mensaje': mensaje_validacion
+            }, status=400)
         
-        # Verificar contraseña actual
+        # Validación 5: Verificar que la contraseña actual es correcta
         if not check_password(contrasena_actual, usuario.password):
+            # Registrar intento fallido en bitácora por seguridad
             registrar_bitacora(
                 usuario=usuario,
                 tabla_afectada='usuario',
                 accion='INTENTO_CAMBIO_CONTRASENA_FALLIDO',
-                descripcion='Intento fallido de cambiar contraseña'
+                descripcion='Contraseña actual incorrecta'
             )
             return JsonResponse({
                 'success': False,
                 'mensaje': 'Contraseña actual incorrecta'
             }, status=401)
         
-        # Cambiar contraseña
+        # Si todas las validaciones pasaron, cambiar la contraseña
         usuario.password = make_password(contrasena_nueva)
         usuario.save()
         
+        # Registrar exitosamente el cambio en bitácora
         registrar_bitacora(
             usuario=usuario,
             tabla_afectada='usuario',
-            accion='CAMBIO_CONTRASENA',
-            descripcion='Contraseña cambiada'
+            accion='CAMBIO_CONTRASENA_EXITOSO',
+            descripcion='Usuario cambió su contraseña correctamente'
         )
         
         return JsonResponse({
             'success': True,
             'mensaje': 'Contraseña cambiada correctamente'
         })
+        
+    except Usuario.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'mensaje': 'Usuario no encontrado'
+        }, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'mensaje': 'Formato de datos inválido'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'mensaje': f'Error en el servidor: {str(e)}'
+        }, status=500)
+
+
+# ============= CU8. RECUPERAR CONTRASEÑA =============
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def recuperar_contrasena(request):
+    """
+    CU8. Recuperar contraseña (Reset Password)
+    POST: Genera una contraseña temporal para un usuario olvidó su contraseña
+    
+    Requiere JSON:
+    - username: Usuario que olvidó la contraseña
+    
+    Retorna:
+    - Una contraseña temporal que cumple con requisitos de seguridad
+    - Registra la acción en bitácora
+    
+    NOTA: En producción, se debe enviar esta contraseña por email
+    """
+    try:
+        # Parsear datos JSON
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        
+        # Validación: Username requerido
+        if not username:
+            return JsonResponse({
+                'success': False,
+                'mensaje': 'El nombre de usuario es requerido'
+            }, status=400)
+        
+        # Buscar usuario
+        try:
+            usuario = Usuario.objects.select_related('persona').get(username=username)
+        except Usuario.DoesNotExist:
+            # Por seguridad, no revelar si el usuario existe o no
+            return JsonResponse({
+                'success': False,
+                'mensaje': 'Si el usuario existe, recibirá una contraseña temporal'
+            }, status=404)
+        
+        # Validación: Usuario activo
+        if not usuario.estado:
+            return JsonResponse({
+                'success': False,
+                'mensaje': 'Este usuario está inactivo. Contacta al administrador'
+            }, status=403)
+        
+        # Generar contraseña temporal segura
+        contrasena_temporal = generar_contrasena_temporal()
+        
+        # Guardar la nueva contraseña temporal
+        usuario.password = make_password(contrasena_temporal)
+        usuario.save()
+        
+        # Registrar en bitácora
+        registrar_bitacora(
+            usuario=usuario,
+            tabla_afectada='usuario',
+            accion='RECUPERACION_CONTRASENA',
+            descripcion=f'Se generó contraseña temporal para usuario {username}'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'mensaje': 'Contraseña temporal generada correctamente',
+            'contrasena_temporal': contrasena_temporal,
+            'nota': 'Esta contraseña temporal debería ser enviada por email. Recuerda cambiarla en el siguiente login.'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'mensaje': 'Formato de datos inválido'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'mensaje': f'Error en el servidor: {str(e)}'
+        }, status=500)
         
     except Usuario.DoesNotExist:
         return JsonResponse({

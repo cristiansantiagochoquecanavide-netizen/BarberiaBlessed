@@ -122,6 +122,52 @@
   font-size: 14px;
 }
 
+/* Estilos para mensaje de bloqueo */
+.error-message.bloqueado {
+  background-color: #ffe0e0;  /* Rojo más intenso */
+  border: 2px solid #ff4444;  /* Borde rojo oscuro */
+  color: #cc0000;             /* Texto rojo oscuro */
+  padding: 16px 15px;
+  font-weight: 600;
+}
+
+.error-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Contador de tiempo */
+.countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #cc0000;
+  background-color: rgba(255, 68, 68, 0.1);
+  padding: 10px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;  /* Monospace para el contador */
+  letter-spacing: 2px;
+}
+
+.tiempo-restante {
+  display: block;
+}
+
+/* Botón bloqueado */
+.login-button.bloqueado {
+  background: linear-gradient(135deg, #cc0000 0%, #990000 100%);
+  cursor: not-allowed;
+}
+
+.login-button.bloqueado:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .login-footer {
   text-align: center;
   margin-top: 30px;

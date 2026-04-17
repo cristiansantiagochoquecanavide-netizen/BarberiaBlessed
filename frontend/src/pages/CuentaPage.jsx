@@ -2,10 +2,13 @@
  * CU7. Página de Mi Cuenta
  * 
  * Permite:
- * - Cambiar contraseña del usuario autenticado
  * - Ver información del perfil
+ * - Cambiar contraseña con validaciones robustas de seguridad
  * 
- * Sincronización: Conectado con la API de cambio de contraseña
+ * Validaciones de contraseña:
+ * - Mínimo 8 caracteres
+ * - 1 mayúscula (A-Z), 1 minúscula (a-z), 1 número (0-9)
+ * - 1 carácter especial (@, #, $, %, !, &, *, etc.)
  */
 
 import { useState } from 'react';
@@ -26,37 +29,106 @@ export const CuentaPage = () => {
     confirmacion: ''
   });
 
+  // Estado para validaciones de contraseña en tiempo real
+  const [validaciones, setValidaciones] = useState({
+    longitud: false,        // 8+ caracteres
+    mayuscula: false,       // A-Z
+    minuscula: false,       // a-z
+    numero: false,          // 0-9
+    especial: false         // @, #, $, %, etc.
+  });
+
+  /**
+   * Valida que la contraseña cumpla con todos los requisitos de seguridad
+   * Utiliza expresiones regulares (regex) para verificar cada criterio
+   * 
+   * Criterios:
+   * 1. Mínimo 8 caracteres
+   * 2. Al menos 1 mayúscula (A-Z)
+   * 3. Al menos 1 minúscula (a-z)
+   * 4. Al menos 1 número (0-9)
+   * 5. Al menos 1 carácter especial (@, #, $, %, !, &, *)
+   */
+  const validarContrasenaNueva = (contrasena) => {
+    // Validación 1: Longitud mínima de 8 caracteres
+    const tieneMinimo8 = contrasena.length >= 8;
+    
+    // Validación 2: Al menos 1 mayúscula (expres. regular: /[A-Z]/)
+    const tieneMayuscula = /[A-Z]/.test(contrasena);
+    
+    // Validación 3: Al menos 1 minúscula (expresión regular: /[a-z]/)
+    const tieneMinuscula = /[a-z]/.test(contrasena);
+    
+    // Validación 4: Al menos 1 número (expresión regular: /[0-9]/)
+    const tieneNumero = /[0-9]/.test(contrasena);
+    
+    // Validación 5: Al menos 1 carácter especial (@, #, $, %, !, &, *, etc.)
+    // Expresión regular incluye caracteres permitidos: [@#$%!&*\-_=+\[\]{};:'",./<>?\\`~^|]
+    const tieneEspecial = /[@#$%!&*\-_=+\[\]{};:'",./<>?\\`~^|]/.test(contrasena);
+    
+    // Actualizar estados de validación para mostrar visualmente al usuario
+    setValidaciones({
+      longitud: tieneMinimo8,
+      mayuscula: tieneMayuscula,
+      minuscula: tieneMinuscula,
+      numero: tieneNumero,
+      especial: tieneEspecial
+    });
+    
+    // Retornar true si todas las validaciones pasaron
+    return tieneMinimo8 && tieneMayuscula && tieneMinuscula && tieneNumero && tieneEspecial;
+  };
+
+  /**
+   * Maneja cambios en los inputs del formulario
+   * Valida en tiempo real la contraseña nueva
+   */
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({
       ...prev,
       [name]: value
     }));
+    
+    // Si es la contraseña nueva, validar en tiempo real
+    if (name === 'contrasenaNueva') {
+      validarContrasenaNueva(value);
+    }
+    
+    // Limpiar mensajes de error y éxito
     setError('');
     setExito('');
   };
 
+  /**
+   * Envía el formulario de cambio de contraseña
+   * Primero valida localmente, luego envía al backend
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setExito('');
 
-    // Validaciones
+    // Validación 1: Campos requeridos no vacíos
     if (!form.contrasenaActual.trim() || !form.contrasenaNueva.trim() || !form.confirmacion.trim()) {
       setError('Todos los campos son requeridos');
       return;
     }
 
+    // Validación 2: Las nuevas contraseñas coinciden
     if (form.contrasenaNueva !== form.confirmacion) {
-      setError('Las contraseñas nuevas no coinciden');
+      setError('Las nuevas contraseñas no coinciden');
       return;
     }
 
-    if (form.contrasenaNueva.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+    // Validación 3: La nueva contraseña cumple con requisitos de seguridad
+    const esValida = validarContrasenaNueva(form.contrasenaNueva);
+    if (!esValida) {
+      setError('La contraseña no cumple con los requisitos de seguridad. Verifica los criterios arriba.');
       return;
     }
 
+    // Enviar solicitud al backend Django
     setCargando(true);
     const resultado = await cambiarContrasena(
       form.contrasenaActual,
@@ -65,13 +137,23 @@ export const CuentaPage = () => {
     );
 
     if (resultado.success) {
-      setExito('Contraseña cambiada exitosamente');
+      // Éxito: mostrar mensaje y limpiar formulario
+      setExito('✓ Contraseña cambiada exitosamente');
       setForm({
         contrasenaActual: '',
         contrasenaNueva: '',
         confirmacion: ''
       });
+      // Limpiar validaciones visuales
+      setValidaciones({
+        longitud: false,
+        mayuscula: false,
+        minuscula: false,
+        numero: false,
+        especial: false
+      });
     } else {
+      // Error: mostrar mensaje del backend
       setError(resultado.mensaje || 'Error al cambiar contraseña');
     }
 
@@ -118,7 +200,7 @@ export const CuentaPage = () => {
         <section className="cambiar-contrasena-section">
           <h2>
             <Lock size={24} />
-            Cambiar Contraseña
+            Cambiar Contraseña (CU7)
           </h2>
 
           {error && (
@@ -136,6 +218,7 @@ export const CuentaPage = () => {
           )}
 
           <form onSubmit={handleSubmit} className="contrasena-form">
+            {/* Campo: Contraseña Actual */}
             <div className="form-group">
               <label htmlFor="contrasenaActual">Contraseña Actual *</label>
               <input
@@ -147,9 +230,11 @@ export const CuentaPage = () => {
                 disabled={cargando}
                 required
                 placeholder="Ingrese su contraseña actual"
+                className="form-input"
               />
             </div>
 
+            {/* Campo: Contraseña Nueva */}
             <div className="form-group">
               <label htmlFor="contrasenaNueva">Contraseña Nueva *</label>
               <input
@@ -161,12 +246,50 @@ export const CuentaPage = () => {
                 disabled={cargando}
                 required
                 placeholder="Ingrese su contraseña nueva"
+                className="form-input"
               />
-              <p className="info-text">Mínimo 6 caracteres</p>
+              
+              {/* Validaciones de seguridad mostrando requisitos en tiempo real */}
+              {form.contrasenaNueva && (
+                <div className="validaciones-container">
+                  <p className="validaciones-titulo">Requisitos de seguridad:</p>
+                  
+                  {/* Requisito 1: Longitud */}
+                  <div className={`validacion-item ${validaciones.longitud ? 'valido' : 'invalido'}`}>
+                    <span className="icono">{validaciones.longitud ? '✓' : '✗'}</span>
+                    <span>Mínimo 8 caracteres</span>
+                  </div>
+                  
+                  {/* Requisito 2: Mayúscula */}
+                  <div className={`validacion-item ${validaciones.mayuscula ? 'valido' : 'invalido'}`}>
+                    <span className="icono">{validaciones.mayuscula ? '✓' : '✗'}</span>
+                    <span>Contiene mayúscula (A-Z)</span>
+                  </div>
+                  
+                  {/* Requisito 3: Minúscula */}
+                  <div className={`validacion-item ${validaciones.minuscula ? 'valido' : 'invalido'}`}>
+                    <span className="icono">{validaciones.minuscula ? '✓' : '✗'}</span>
+                    <span>Contiene minúscula (a-z)</span>
+                  </div>
+                  
+                  {/* Requisito 4: Número */}
+                  <div className={`validacion-item ${validaciones.numero ? 'valido' : 'invalido'}`}>
+                    <span className="icono">{validaciones.numero ? '✓' : '✗'}</span>
+                    <span>Contiene número (0-9)</span>
+                  </div>
+                  
+                  {/* Requisito 5: Carácter especial */}
+                  <div className={`validacion-item ${validaciones.especial ? 'valido' : 'invalido'}`}>
+                    <span className="icono">{validaciones.especial ? '✓' : '✗'}</span>
+                    <span>Contiene carácter especial (@, #, $, %, !, &, *, etc.)</span>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Campo: Confirmar Contraseña */}
             <div className="form-group">
-              <label htmlFor="confirmacion">Confirmar Contraseña *</label>
+              <label htmlFor="confirmacion">Confirmar Contraseña Nueva *</label>
               <input
                 id="confirmacion"
                 type="password"
@@ -176,18 +299,35 @@ export const CuentaPage = () => {
                 disabled={cargando}
                 required
                 placeholder="Confirme su contraseña nueva"
+                className="form-input"
               />
+              
+              {/* Indicador visual de coincidencia */}
+              {form.confirmacion && (
+                <div className={`coincidencia ${form.contrasenaNueva === form.confirmacion ? 'match' : 'nomatch'}`}>
+                  {form.contrasenaNueva === form.confirmacion ? '✓ Las contraseñas coinciden' : '✗ Las contraseñas no coinciden'}
+                </div>
+              )}
             </div>
 
-            <button type="submit" className="btn-submit" disabled={cargando}>
-              {cargando ? 'Cambiando contraseña...' : 'Cambiar Contraseña'}
+            {/* Botón de envío */}
+            <button 
+              type="submit" 
+              className="btn-submit" 
+              disabled={cargando || !Object.values(validaciones).every(v => v)}
+            >
+              {cargando ? '⏳ Cambiando contraseña...' : '🔒 Cambiar Contraseña'}
             </button>
           </form>
 
+          {/* Información de seguridad */}
           <div className="info-box">
             <p>
-              <strong>⚠️ Importante:</strong> Por seguridad, se recomienda cambiar su contraseña regularmente.
-              No comparta su contraseña con nadie.
+              <strong>⚠️ Información importante:</strong><br/>
+              • Por seguridad, se recomienda cambiar su contraseña cada 3 meses<br/>
+              • Utilice contraseñas únicas que no use en otros servicios<br/>
+              • No comparta su contraseña con nadie<br/>
+              • Una buena contraseña incluye mayúsculas, minúsculas, números y caracteres especiales
             </p>
           </div>
         </section>

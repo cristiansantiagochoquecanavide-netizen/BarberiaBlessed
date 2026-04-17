@@ -163,6 +163,18 @@
   color: #667eea;
 }
 
+.id-cell {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-weight: 600;
+  color: #764ba2;
+  background: #f0e6ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  min-width: 40px;
+  text-align: center;
+}
+
 .badge {
   display: inline-block;
   padding: 6px 12px;
@@ -291,6 +303,144 @@
 .form-group-2col input:disabled {
   background-color: #f5f5f5;
   color: #999;
+}
+
+/* Formulario Full Width */
+.form-group-full {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group-full label {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+/* Select Multiple */
+.form-select-multiple {
+  padding: 8px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 120px;
+}
+
+.form-select-multiple:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-select-multiple option {
+  padding: 8px 4px;
+  border: none;
+  background: white;
+  color: #333;
+}
+
+.form-select-multiple option:checked {
+  background: linear-gradient(#667eea, #667eea);
+  background-color: #667eea;
+  color: white;
+}
+
+/* Form Hint */
+.form-hint {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* Contenedor de Roles - DEPRECATED (keep for reference) */
+.roles-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.roles-container:focus-within {
+  border-color: #667eea;
+  background: #fafbff;
+}
+
+/* Labels de Checkbox - DEPRECATED */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  background: white;
+  border: 1px solid transparent;
+  font-size: 14px;
+  color: #333;
+}
+
+.checkbox-label input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #667eea;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.checkbox-label:hover {
+  background: #f0f4ff;
+  border-color: #667eea;
+}
+
+.checkbox-label input[type="checkbox"]:checked + span {
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* Mensaje cuando no hay roles */
+.no-roles {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Badges de Roles en Tabla */
+.roles-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge-rol {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e3f2fd;
+  color: #1976d2;
+  white-space: nowrap;
+}
+
+.text-secondary {
+  color: #999;
+  font-size: 13px;
+  font-style: italic;
 }
 
 .modal-footer {

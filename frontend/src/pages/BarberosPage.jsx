@@ -152,6 +152,7 @@ export const BarberosPage = () => {
             <table className="crud-table">
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Nombre</th>
                   <th>Especialidad</th>
                   <th>Calificación</th>
@@ -163,6 +164,7 @@ export const BarberosPage = () => {
               <tbody>
                 {barberos.map((barbero) => (
                   <tr key={barbero.id_persona}>
+                    <td className="id-cell">{barbero.id_persona}</td>
                     <td>{barbero.nombres} {barbero.apellidos}</td>
                     <td>{barbero.especialidad || 'General'}</td>
                     <td>

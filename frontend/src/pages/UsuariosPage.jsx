@@ -43,6 +43,7 @@ export const UsuariosPage = () => {
     telefono: '',
     ci: '',
     direccion: '',
+    fecha_nacimiento: '',
     roles: []
   });
 
@@ -84,6 +85,7 @@ export const UsuariosPage = () => {
         telefono: usuario.telefono || '',
         ci: usuario.ci || '',
         direccion: usuario.direccion || '',
+        fecha_nacimiento: usuario.fecha_nacimiento || '',
         roles: usuario.roles || []
       });
     } else {
@@ -97,6 +99,7 @@ export const UsuariosPage = () => {
         telefono: '',
         ci: '',
         direccion: '',
+        fecha_nacimiento: '',
         roles: []
       });
     }
@@ -202,9 +205,11 @@ export const UsuariosPage = () => {
             <table className="crud-table">
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Usuario</th>
                   <th>Nombre Completo</th>
                   <th>Email</th>
+                  <th>Roles</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -212,9 +217,23 @@ export const UsuariosPage = () => {
               <tbody>
                 {usuarios.map((usuario) => (
                   <tr key={usuario.id_usuario}>
+                    <td className="id-cell">{usuario.id_usuario}</td>
                     <td className="font-mono">{usuario.username}</td>
                     <td>{usuario.nombre}</td>
                     <td>{usuario.correo}</td>
+                    <td>
+                      <div className="roles-badges">
+                        {usuario.roles && usuario.roles.length > 0 ? (
+                          usuario.roles.map((rol, idx) => (
+                            <span key={idx} className="badge-rol">
+                              {rol}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-secondary">Sin roles</span>
+                        )}
+                      </div>
+                    </td>
                     <td>
                       <span className={`badge ${usuario.estado ? 'activo' : 'inactivo'}`}>
                         {usuario.estado ? 'Activo' : 'Inactivo'}
@@ -336,7 +355,7 @@ export const UsuariosPage = () => {
                 </div>
               </div>
 
-              {/* CI y Dirección */}
+              {/* CI y Fecha de Nacimiento */}
               <div className="form-group-2col">
                 <div>
                   <label>CI</label>
@@ -348,6 +367,19 @@ export const UsuariosPage = () => {
                   />
                 </div>
                 <div>
+                  <label>Fecha de Nacimiento</label>
+                  <input
+                    type="date"
+                    name="fecha_nacimiento"
+                    value={form.fecha_nacimiento}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+
+              {/* Dirección */}
+              <div className="form-group-2col">
+                <div>
                   <label>Dirección</label>
                   <input
                     type="text"
@@ -355,6 +387,39 @@ export const UsuariosPage = () => {
                     value={form.direccion}
                     onChange={handleInputChange}
                   />
+                </div>
+              </div>
+
+              {/* Roles */}
+              <div className="form-group-2col">
+                <div>
+                  <label>Roles Asignados</label>
+                  <select
+                    multiple
+                    name="roles"
+                    value={form.roles.map(r => r.toString())}
+                    onChange={(e) => {
+                      const selectedRoles = Array.from(e.target.selectedOptions, option => parseInt(option.value));
+                      setForm(prev => ({
+                        ...prev,
+                        roles: selectedRoles
+                      }));
+                    }}
+                    className="form-select-multiple"
+                  >
+                    {roles.length === 0 ? (
+                      <option disabled>No hay roles disponibles</option>
+                    ) : (
+                      roles.map((rol) => (
+                        <option key={rol.id_rol} value={rol.id_rol}>
+                          {rol.nombre}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <small className="form-hint">
+                    Usa Ctrl+Click (Cmd+Click en Mac) para seleccionar múltiples roles
+                  </small>
                 </div>
               </div>
 
